@@ -13,15 +13,20 @@ $pdo = get_pdo();
 $action = $_POST['action'] ?? $_GET['action'] ?? null;
 
 if ($action === 'create') {
-    $name = trim($_POST['name'] ?? '');
-    $date = $_POST['date'] ?? '';
+    $date = $_POST['date'] ?? date('Y-m-d');
     $courts = max(1, (int)($_POST['num_courts'] ?? 1));
-    $notes = trim($_POST['notes'] ?? '');
-    if ($name === '' || $date === '') {
-        flash('error', 'Please provide name and date.');
+
+    if ($date === '') {
+        flash('error', 'Please provide a date.');
     } else {
-        $stmt = $pdo->prepare('INSERT INTO tournaments (name, date, num_courts, notes, status, created_at, updated_at) VALUES (?, ?, ?, ?, "setup", NOW(), NOW())');
-        $stmt->execute([$name, $date, $courts, $notes]);
+        $countStmt = $pdo->prepare('SELECT COUNT(*) FROM tournaments WHERE date = ?');
+        $countStmt->execute([$date]);
+        $sequence = ((int)$countStmt->fetchColumn()) + 1;
+        $baseName = format_date($date);
+        $name = $baseName . ($sequence > 1 ? ' #' . $sequence : '');
+
+        $stmt = $pdo->prepare('INSERT INTO tournaments (name, date, num_courts, notes, status, created_at, updated_at) VALUES (?, ?, ?, NULL, "setup", NOW(), NOW())');
+        $stmt->execute([$name, $date, $courts]);
         $tournamentId = (int)$pdo->lastInsertId();
         for ($i = 1; $i <= $courts; $i++) {
             $pdo->prepare('INSERT INTO courts (tournament_id, court_number, status) VALUES (?, ?, "active")')->execute([$tournamentId, $i]);
@@ -37,8 +42,8 @@ if ($action === 'clone') {
     $stmt = $pdo->prepare('SELECT * FROM tournaments WHERE id = ?');
     $stmt->execute([$sourceId]);
     if ($src = $stmt->fetch()) {
-        $stmtIns = $pdo->prepare('INSERT INTO tournaments (name, date, num_courts, notes, status, created_at, updated_at) VALUES (?, ?, ?, ?, "setup", NOW(), NOW())');
-        $stmtIns->execute([$src['name'] . ' (Copy)', $src['date'], $src['num_courts'], $src['notes']]);
+        $stmtIns = $pdo->prepare('INSERT INTO tournaments (name, date, num_courts, notes, status, created_at, updated_at) VALUES (?, ?, ?, NULL, "setup", NOW(), NOW())');
+        $stmtIns->execute([$src['name'] . ' (Copy)', $src['date'], $src['num_courts']]);
         $newId = (int)$pdo->lastInsertId();
         for ($i = 1; $i <= $src['num_courts']; $i++) {
             $pdo->prepare('INSERT INTO courts (tournament_id, court_number, status) VALUES (?, ?, "active")')->execute([$newId, $i]);
@@ -67,20 +72,14 @@ include view_path('header.php');
         <input type="hidden" name="action" value="create">
         <div class="row">
             <div class="col">
-                <label>Name</label>
-                <input type="text" name="name" required>
-            </div>
-            <div class="col">
                 <label>Date</label>
-                <input type="date" name="date" required>
+                <input type="date" name="date" value="<?= date('Y-m-d') ?>" required>
             </div>
             <div class="col">
                 <label>Courts</label>
                 <input type="number" name="num_courts" min="1" value="1" required>
             </div>
         </div>
-        <label style="margin-top:8px; display:block;">Notes</label>
-        <textarea name="notes" rows="2" placeholder="Description"></textarea>
         <button type="submit" class="btn" style="margin-top:10px;">Create Tournament</button>
     </form>
 </div>
@@ -90,7 +89,6 @@ include view_path('header.php');
         <thead>
             <tr>
                 <th>Name</th>
-                <th>Date</th>
                 <th>Courts</th>
                 <th>Status</th>
                 <th>Actions</th>
@@ -100,7 +98,6 @@ include view_path('header.php');
         <?php foreach ($tournaments as $t): ?>
             <tr>
                 <td><?= h($t['name']) ?></td>
-                <td><?= format_date($t['date']) ?></td>
                 <td><?= (int)$t['num_courts'] ?></td>
                 <td><span class="badge"><?= h($t['status']) ?></span></td>
                 <td>
