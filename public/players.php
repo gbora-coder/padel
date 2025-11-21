@@ -79,7 +79,7 @@ $listStmt = $pdo->prepare("SELECT * FROM players $where ORDER BY $sortField $dir
 $listStmt->execute($params);
 $players = $listStmt->fetchAll();
 
-include __DIR__ . '/../views/header.php';
+include view_path('header.php');
 ?>
 <div class="card">
     <h2>Players</h2>
@@ -159,4 +159,4 @@ include __DIR__ . '/../views/header.php';
         <?php endfor; ?>
     </div>
 </div>
-<?php include __DIR__ . '/../views/footer.php'; ?>
+<?php include view_path('footer.php'); ?>

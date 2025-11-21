@@ -59,7 +59,7 @@ if ($action === 'clone') {
 $stmt = $pdo->query('SELECT * FROM tournaments ORDER BY date DESC, id DESC');
 $tournaments = $stmt->fetchAll();
 
-include __DIR__ . '/../views/header.php';
+include view_path('header.php');
 ?>
 <div class="card">
     <h2>Create Tournament</h2>
@@ -116,4 +116,4 @@ include __DIR__ . '/../views/header.php';
         </tbody>
     </table>
 </div>
-<?php include __DIR__ . '/../views/footer.php'; ?>
+<?php include view_path('footer.php'); ?>

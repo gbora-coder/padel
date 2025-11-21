@@ -177,7 +177,7 @@ $availablePlayersStmt = $pdo->prepare($sql);
 $availablePlayersStmt->execute($params);
 $availablePlayers = $availablePlayersStmt->fetchAll();
 
-include __DIR__ . '/../views/header.php';
+include view_path('header.php');
 ?>
 <a href="/tournaments.php" class="btn secondary inline">&larr; All tournaments</a>
 <div class="card">
@@ -379,4 +379,4 @@ include __DIR__ . '/../views/header.php';
     </table>
 </div>
 <?php endif; ?>
-<?php include __DIR__ . '/../views/footer.php'; ?>
+    <?php include view_path('footer.php'); ?>

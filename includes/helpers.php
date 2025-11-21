@@ -71,3 +71,19 @@ function is_tournament_locked(int $tournamentId): bool
     $stmt->execute([$tournamentId]);
     return (int)$stmt->fetchColumn() > 0;
 }
+
+function view_path(string $file): string
+{
+    $candidates = [
+        __DIR__ . '/../views/' . $file,
+        __DIR__ . '/views/' . $file,
+    ];
+
+    foreach ($candidates as $candidate) {
+        if (file_exists($candidate)) {
+            return $candidate;
+        }
+    }
+
+    throw new RuntimeException('View not found: ' . $file);
+}
