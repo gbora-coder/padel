@@ -12,7 +12,7 @@ A lightweight PHP/MySQL web app for running friendly Americano-format padel tour
    ```sql
    SOURCE schema.sql;
    ```
-2. Copy `public_html/includes/config.php` and update the database credentials (`db_host`, `db_name`, `db_user`, `db_pass`).
+2. Copy `public_html/includes/config.php` and update the database credentials (`db_host`, `db_name`, `db_user`, `db_pass`). On hosted servers where `root` login is disabled or requires a password, set the correct user/password here. You can also provide overrides via environment variables `DB_HOST`, `DB_NAME`, `DB_USER`, `DB_PASS`, and `DB_CHARSET` if you prefer not to modify the file.
 3. Point your web server document root to `public_html/` (or visit `http://localhost:8000/index.php` when running with PHP's built-in server).
    ```bash
    php -S localhost:8000 -t public_html
