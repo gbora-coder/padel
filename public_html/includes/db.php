@@ -40,6 +40,7 @@ function get_pdo(): PDO
         ];
         try {
             $pdo = new PDO($dsn, $cfg['db_user'], $cfg['db_pass'], $options);
+            ensure_schema_upgrades($pdo);
         } catch (PDOException $e) {
             http_response_code(500);
             $friendly = 'Database connection failed. Update credentials in public_html/includes/config.php ' .
@@ -51,4 +52,35 @@ function get_pdo(): PDO
         }
     }
     return $pdo;
+}
+
+function ensure_schema_upgrades(PDO $pdo): void
+{
+    static $checked = false;
+    if ($checked) {
+        return;
+    }
+
+    $cfg = db_config();
+
+    try {
+        $stmt = $pdo->prepare(
+            "SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = ? AND table_name = 'tournaments' AND column_name = 'target_points'"
+        );
+        $stmt->execute([$cfg['db_name']]);
+        $exists = (int)$stmt->fetchColumn() > 0;
+
+        if (!$exists) {
+            $pdo->exec("ALTER TABLE tournaments ADD COLUMN target_points TINYINT NOT NULL DEFAULT 21 AFTER num_courts");
+        }
+    } catch (PDOException $e) {
+        // Surface a clear message if the automatic migration fails so the organizer can fix the schema manually.
+        http_response_code(500);
+        echo '<h1>Database upgrade required</h1>';
+        echo '<p>Could not update the database schema automatically. Please add a <code>target_points</code> column to the <code>tournaments</code> table (TINYINT NOT NULL DEFAULT 21).</p>';
+        echo '<p><small>' . htmlspecialchars($e->getMessage(), ENT_QUOTES, 'UTF-8') . '</small></p>';
+        exit;
+    }
+
+    $checked = true;
 }
