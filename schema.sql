@@ -11,8 +11,8 @@ CREATE TABLE tournaments (
     name VARCHAR(150) NOT NULL,
     date DATE NOT NULL,
     num_courts INT NOT NULL,
+    target_points TINYINT NOT NULL DEFAULT 21,
     status ENUM('setup','active','finished') NOT NULL DEFAULT 'setup',
-    notes TEXT NULL,
     created_at DATETIME NOT NULL,
     updated_at DATETIME NOT NULL
 ) ENGINE=InnoDB;

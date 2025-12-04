@@ -96,7 +96,15 @@ if ($action === 'save_result') {
     $team1 = (int)($_POST['team1_score'] ?? -1);
     $team2 = (int)($_POST['team2_score'] ?? -1);
     $finish = isset($_POST['finish']);
-    if ($gameId && $team1 >= 0 && $team2 >= 0 && $team1 <= 7 && $team2 <= 7 && $team1 !== $team2 && max($team1, $team2) >= 6) {
+    $targetPoints = (int)$tournament['target_points'];
+    if (
+        $gameId &&
+        $team1 >= 0 &&
+        $team2 >= 0 &&
+        $team1 <= $targetPoints &&
+        $team2 <= $targetPoints &&
+        ($team1 + $team2) === $targetPoints
+    ) {
         save_game_result($gameId, $team1, $team2);
         if ($finish) {
             $pdo->prepare('UPDATE courts SET status = "finished" WHERE id = ?')->execute([$courtId]);
@@ -109,7 +117,7 @@ if ($action === 'save_result') {
         check_tournament_finished($id);
         flash('success', 'Result saved.');
     } else {
-        flash('error', 'Invalid score. Make sure one team wins the set.');
+        flash('error', 'Invalid score. Totals must equal ' . $targetPoints . ' points.');
     }
     redirect('/tournament.php?id=' . $id);
 }
@@ -161,7 +169,6 @@ foreach ($courts as $court) {
 }
 
 $leaderboard = leaderboard($id);
-$gamesPlayed = games_played_count($id);
 $playersCount = count($tournamentPlayers);
 
 // players not in tournament for selection
@@ -182,10 +189,7 @@ include view_path('header.php');
 <a href="/tournaments.php" class="btn secondary inline">&larr; All tournaments</a>
 <div class="card">
     <h2><?= h($tournament['name']) ?> <span class="badge"><?= h($tournament['status']) ?></span></h2>
-    <p class="small">Date: <?= format_date($tournament['date']) ?> | Courts: <?= (int)$tournament['num_courts'] ?> | Players: <?= $playersCount ?></p>
-    <?php if ($tournament['notes']): ?>
-        <p><?= nl2br(h($tournament['notes'])) ?></p>
-    <?php endif; ?>
+    <p class="small">Date: <?= format_date($tournament['date']) ?> | Courts: <?= (int)$tournament['num_courts'] ?> | Players: <?= $playersCount ?> | Target points: <?= (int)$tournament['target_points'] ?></p>
     <?php if ($tournament['status'] === 'setup'): ?>
         <form method="post" onsubmit="return confirm('Start tournament now?');">
             <input type="hidden" name="action" value="start">
@@ -246,42 +250,7 @@ include view_path('header.php');
 </div>
 <?php endif; ?>
 
-<div class="card">
-    <h3>Players in this tournament</h3>
-    <table class="table">
-        <thead>
-            <tr><th>Name</th><th>Level</th><th>Points</th><th>Games</th><?php if ($tournament['status'] === 'setup'): ?><th>Remove</th><?php endif; ?></tr>
-        </thead>
-        <tbody>
-            <?php foreach ($tournamentPlayers as $tp): ?>
-                <tr>
-                    <td><?= h($tp['name']) ?></td>
-                    <td><?= h($tp['level']) ?></td>
-                    <td><?= (int)$tp['points'] ?></td>
-                    <td><?= (int)$tp['games_played'] ?></td>
-                    <?php if ($tournament['status'] === 'setup'): ?>
-                        <td>
-                            <form method="post" onsubmit="return confirm('Remove this player?');">
-                                <input type="hidden" name="action" value="remove_player">
-                                <input type="hidden" name="tp_id" value="<?= (int)$tp['id'] ?>">
-                                <button class="btn danger" type="submit">Remove</button>
-                            </form>
-                        </td>
-                    <?php endif; ?>
-                </tr>
-            <?php endforeach; ?>
-        </tbody>
-    </table>
-</div>
-
 <?php if ($tournament['status'] !== 'setup'): ?>
-<div class="card">
-    <div class="flex" style="flex-wrap:wrap; gap:12px;">
-        <div><strong>Players:</strong> <?= $playersCount ?></div>
-        <div><strong>Courts:</strong> <?= (int)$tournament['num_courts'] ?></div>
-        <div><strong>Games played:</strong> <?= $gamesPlayed ?></div>
-    </div>
-</div>
 <div class="flex" style="gap:16px; align-items:flex-start; flex-wrap:wrap;">
     <div style="flex:2; min-width:320px;">
         <div class="courts">
@@ -298,17 +267,18 @@ include view_path('header.php');
                             <p><strong>Team 1:</strong> <?= h($players[0]['name']) ?> (<?= h($players[0]['level']) ?>) + <?= h($players[1]['name']) ?> (<?= h($players[1]['level']) ?>)</p>
                             <p><strong>Team 2:</strong> <?= h($players[2]['name']) ?> (<?= h($players[2]['level']) ?>) + <?= h($players[3]['name']) ?> (<?= h($players[3]['level']) ?>)</p>
                         </div>
+                        <p class="small">Enter scores that add up to <?= (int)$tournament['target_points'] ?> total points for this game.</p>
                         <form method="post" class="row" style="gap:8px;">
                             <input type="hidden" name="action" value="save_result">
                             <input type="hidden" name="game_id" value="<?= (int)$game['id'] ?>">
                             <input type="hidden" name="court_id" value="<?= (int)$court['id'] ?>">
                             <div class="col">
                                 <label>Team 1 games</label>
-                                <input type="number" name="team1_score" min="0" max="7" required>
+                                <input type="number" name="team1_score" min="0" max="<?= (int)$tournament['target_points'] ?>" required>
                             </div>
                             <div class="col">
                                 <label>Team 2 games</label>
-                                <input type="number" name="team2_score" min="0" max="7" required>
+                                <input type="number" name="team2_score" min="0" max="<?= (int)$tournament['target_points'] ?>" required>
                             </div>
                             <div class="col" style="align-self:flex-end;">
                                 <button class="btn inline" type="submit">Save &amp; New Game</button>
@@ -379,4 +349,32 @@ include view_path('header.php');
     </table>
 </div>
 <?php endif; ?>
+
+<div class="card">
+    <h3>Players in this tournament</h3>
+    <table class="table">
+        <thead>
+            <tr><th>Name</th><th>Level</th><th>Points</th><th>Games</th><?php if ($tournament['status'] === 'setup'): ?><th>Remove</th><?php endif; ?></tr>
+        </thead>
+        <tbody>
+            <?php foreach ($tournamentPlayers as $tp): ?>
+                <tr>
+                    <td><?= h($tp['name']) ?></td>
+                    <td><?= h($tp['level']) ?></td>
+                    <td><?= (int)$tp['points'] ?></td>
+                    <td><?= (int)$tp['games_played'] ?></td>
+                    <?php if ($tournament['status'] === 'setup'): ?>
+                        <td>
+                            <form method="post" onsubmit="return confirm('Remove this player?');">
+                                <input type="hidden" name="action" value="remove_player">
+                                <input type="hidden" name="tp_id" value="<?= (int)$tp['id'] ?>">
+                                <button class="btn danger" type="submit">Remove</button>
+                            </form>
+                        </td>
+                    <?php endif; ?>
+                </tr>
+            <?php endforeach; ?>
+        </tbody>
+    </table>
+</div>
     <?php include view_path('footer.php'); ?>

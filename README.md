@@ -22,9 +22,10 @@ A lightweight PHP/MySQL web app for running friendly Americano-format padel tour
 ## Features
 - Player management with level tracking and safe deletion when unused.
 - Tournament creation, cloning, and setup with player selection or inline creation.
-- Americano live management with automatic game assignment per court, D-level pairing safeguards, and score entry.
+- Americano live management with automatic game assignment per court, D-level pairing safeguards, and score entry with enforced 16- or 21-point totals per tournament.
 - Live leaderboard plus final leaderboard with CSV export once finished.
 
 ## Notes
 - The game assignment heuristic balances games played and avoids repeated teammate/opponent pairings while respecting the two-D-player rule.
 - Courts can be marked finished when no further games should be played on them.
+- Scoring is configurable per tournament (race to 16 or 21 total games) and supports tied results when the total matches the chosen target (e.g., 8–8 in a 16-point event).
