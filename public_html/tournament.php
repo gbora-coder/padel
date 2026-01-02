@@ -256,9 +256,13 @@ include view_path('header.php');
         <div class="courts">
             <?php foreach ($courts as $court): ?>
                 <?php $game = $activeGames[$court['id']] ?? null; ?>
+                <?php
+                $gameCount = games_count_for_court((int)$court['id']);
+                $gameNumber = $game ? $gameCount : ($court['status'] === 'active' ? $gameCount + 1 : $gameCount);
+                ?>
                 <div class="card <?= $court['status'] === 'finished' ? 'status-finished' : '' ?>">
                     <div class="flex" style="justify-content:space-between; align-items:center;">
-                        <h3 class="court-title"><?= h(court_label($court['court_number'])) ?></h3>
+                        <h3 class="court-title"><?= h(court_label($court['court_number'])) ?><?php if ($gameNumber > 0): ?> - Game <?= $gameNumber ?><?php endif; ?></h3>
                         <span class="badge"><?= h($court['status']) ?></span>
                     </div>
                     <?php if ($game): ?>
