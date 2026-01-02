@@ -25,7 +25,7 @@ function active_games(int $tournamentId): array
     return $stmt->fetchAll();
 }
 
-function active_players_with_game_number(int $tournamentId): array
+function players_assigned_with_game_number(int $tournamentId): array
 {
     $pdo = get_pdo();
     $sql = 'SELECT gp.tournament_player_id, g.court_id, (
@@ -33,7 +33,7 @@ function active_players_with_game_number(int $tournamentId): array
             ) AS game_number
             FROM game_players gp
             JOIN games g ON g.id = gp.game_id
-            WHERE g.tournament_id = ? AND g.status = "active"';
+            WHERE g.tournament_id = ?';
     $stmt = $pdo->prepare($sql);
     $stmt->execute([$tournamentId]);
     return $stmt->fetchAll();
@@ -88,13 +88,15 @@ function player_history_pairs(int $tournamentId): array
 function eligible_players(int $tournamentId, int $targetGameNumber, int $courtId): array
 {
     $pdo = get_pdo();
-    $active = active_players_with_game_number($tournamentId);
+    $assigned = players_assigned_with_game_number($tournamentId);
     $ineligible = [];
-    foreach ($active as $row) {
+    foreach ($assigned as $row) {
         if ((int)$row['game_number'] === $targetGameNumber && (int)$row['court_id'] !== $courtId) {
             $ineligible[] = (int)$row['tournament_player_id'];
         }
     }
+
+    $ineligible = array_values(array_unique($ineligible));
 
     $sql = 'SELECT tp.*, p.name, p.level FROM tournament_players tp JOIN players p ON p.id = tp.player_id WHERE tp.tournament_id = ?';
     $params = [$tournamentId];
