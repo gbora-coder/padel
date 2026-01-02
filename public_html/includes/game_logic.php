@@ -25,6 +25,20 @@ function active_games(int $tournamentId): array
     return $stmt->fetchAll();
 }
 
+function active_players_with_game_number(int $tournamentId): array
+{
+    $pdo = get_pdo();
+    $sql = 'SELECT gp.tournament_player_id, (
+                SELECT COUNT(*) FROM games g2 WHERE g2.court_id = g.court_id AND g2.id <= g.id
+            ) AS game_number
+            FROM game_players gp
+            JOIN games g ON g.id = gp.game_id
+            WHERE g.tournament_id = ? AND g.status = "active"';
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute([$tournamentId]);
+    return $stmt->fetchAll(PDO::FETCH_KEY_PAIR);
+}
+
 function current_game_for_court(int $courtId)
 {
     $pdo = get_pdo();
@@ -69,25 +83,23 @@ function player_history_pairs(int $tournamentId): array
     return ['mates' => $teammates, 'opp' => $opponents];
 }
 
-function player_in_active_game_ids(int $tournamentId): array
+function eligible_players(int $tournamentId, int $targetGameNumber): array
 {
     $pdo = get_pdo();
-    $sql = 'SELECT gp.tournament_player_id FROM game_players gp JOIN games g ON g.id = gp.game_id WHERE g.tournament_id = ? AND g.status = "active"';
-    $stmt = $pdo->prepare($sql);
-    $stmt->execute([$tournamentId]);
-    return $stmt->fetchAll(PDO::FETCH_COLUMN);
-}
+    $active = active_players_with_game_number($tournamentId);
+    $ineligible = [];
+    foreach ($active as $playerId => $gameNumber) {
+        if ((int)$gameNumber >= $targetGameNumber) {
+            $ineligible[] = (int)$playerId;
+        }
+    }
 
-function eligible_players(int $tournamentId): array
-{
-    $pdo = get_pdo();
-    $inActive = player_in_active_game_ids($tournamentId);
-    $placeholders = $inActive ? str_repeat('?,', count($inActive) - 1) . '?' : '';
     $sql = 'SELECT tp.*, p.name, p.level FROM tournament_players tp JOIN players p ON p.id = tp.player_id WHERE tp.tournament_id = ?';
     $params = [$tournamentId];
-    if ($inActive) {
+    if ($ineligible) {
+        $placeholders = str_repeat('?,', count($ineligible) - 1) . '?';
         $sql .= ' AND tp.id NOT IN (' . $placeholders . ')';
-        $params = array_merge($params, $inActive);
+        $params = array_merge($params, $ineligible);
     }
     $sql .= ' ORDER BY tp.games_played ASC, tp.points ASC, RAND()';
     $stmt = $pdo->prepare($sql);
@@ -138,9 +150,9 @@ function teammate_key(int $a, int $b): string
     return implode('-', $sorted);
 }
 
-function pick_players_for_game(int $tournamentId): ?array
+function pick_players_for_game(int $tournamentId, int $targetGameNumber): ?array
 {
-    $eligible = eligible_players($tournamentId);
+    $eligible = eligible_players($tournamentId, $targetGameNumber);
     if (count($eligible) < 4) {
         return null;
     }
@@ -197,7 +209,8 @@ function create_game(int $tournamentId, int $courtId, array $teams): int
 
 function assign_game_to_court(int $tournamentId, int $courtId): ?int
 {
-    $teams = pick_players_for_game($tournamentId);
+    $nextGameNumber = games_count_for_court($courtId) + 1;
+    $teams = pick_players_for_game($tournamentId, $nextGameNumber);
     if (!$teams) {
         return null;
     }
@@ -249,7 +262,8 @@ function check_tournament_finished(int $tournamentId): void
     $assignable = false;
     foreach ($courts as $court) {
         if ($court['status'] === 'active') {
-            $teams = pick_players_for_game($tournamentId);
+            $nextNumber = games_count_for_court((int)$court['id']) + 1;
+            $teams = pick_players_for_game($tournamentId, $nextNumber);
             if ($teams) {
                 $assignable = true;
                 break;
