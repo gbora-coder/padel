@@ -28,7 +28,7 @@ function active_games(int $tournamentId): array
 function active_players_with_game_number(int $tournamentId): array
 {
     $pdo = get_pdo();
-    $sql = 'SELECT gp.tournament_player_id, (
+    $sql = 'SELECT gp.tournament_player_id, g.court_id, (
                 SELECT COUNT(*) FROM games g2 WHERE g2.court_id = g.court_id AND g2.id <= g.id
             ) AS game_number
             FROM game_players gp
@@ -36,7 +36,7 @@ function active_players_with_game_number(int $tournamentId): array
             WHERE g.tournament_id = ? AND g.status = "active"';
     $stmt = $pdo->prepare($sql);
     $stmt->execute([$tournamentId]);
-    return $stmt->fetchAll(PDO::FETCH_KEY_PAIR);
+    return $stmt->fetchAll();
 }
 
 function current_game_for_court(int $courtId)
@@ -85,14 +85,14 @@ function player_history_pairs(int $tournamentId): array
     return ['mates' => $teammates, 'opp' => $opponents];
 }
 
-function eligible_players(int $tournamentId, int $targetGameNumber): array
+function eligible_players(int $tournamentId, int $targetGameNumber, int $courtId): array
 {
     $pdo = get_pdo();
     $active = active_players_with_game_number($tournamentId);
     $ineligible = [];
-    foreach ($active as $playerId => $gameNumber) {
-        if ((int)$gameNumber >= $targetGameNumber) {
-            $ineligible[] = (int)$playerId;
+    foreach ($active as $row) {
+        if ((int)$row['game_number'] === $targetGameNumber && (int)$row['court_id'] !== $courtId) {
+            $ineligible[] = (int)$row['tournament_player_id'];
         }
     }
 
@@ -152,9 +152,9 @@ function teammate_key(int $a, int $b): string
     return implode('-', $sorted);
 }
 
-function pick_players_for_game(int $tournamentId, int $targetGameNumber): ?array
+function pick_players_for_game(int $tournamentId, int $targetGameNumber, int $courtId): ?array
 {
-    $eligible = eligible_players($tournamentId, $targetGameNumber);
+    $eligible = eligible_players($tournamentId, $targetGameNumber, $courtId);
     if (count($eligible) < 4) {
         return null;
     }
@@ -212,7 +212,7 @@ function create_game(int $tournamentId, int $courtId, array $teams): int
 function assign_game_to_court(int $tournamentId, int $courtId): ?int
 {
     $nextGameNumber = games_count_for_court($courtId) + 1;
-    $teams = pick_players_for_game($tournamentId, $nextGameNumber);
+    $teams = pick_players_for_game($tournamentId, $nextGameNumber, $courtId);
     if (!$teams) {
         return null;
     }
@@ -265,7 +265,7 @@ function check_tournament_finished(int $tournamentId): void
     foreach ($courts as $court) {
         if ($court['status'] === 'active') {
             $nextNumber = games_count_for_court((int)$court['id']) + 1;
-            $teams = pick_players_for_game($tournamentId, $nextNumber);
+            $teams = pick_players_for_game($tournamentId, $nextNumber, (int)$court['id']);
             if ($teams) {
                 $assignable = true;
                 break;
