@@ -1,4 +1,4 @@
-# Diginet Padel
+# DigiPadel
 
 A lightweight PHP/MySQL web app for running friendly Americano-format padel tournaments.
 

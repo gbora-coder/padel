@@ -1,6 +1,6 @@
 </main>
 <footer class="footer">
-    <p>&copy; <?= date('Y') ?> Diginet Padel</p>
+    <p>&copy; <?= date('Y') ?> DigiPadel</p>
 </footer>
 </body>
 </html>
