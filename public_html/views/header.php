@@ -12,12 +12,12 @@ $baseNav = $basePath ?: '';
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Padel Americano League</title>
+    <title>Diginet Padel</title>
     <link rel="stylesheet" href="<?= h($assetUrl) ?>">
 </head>
 <body>
 <header class="topbar">
-    <div class="brand">Padel Americano League</div>
+    <div class="brand">Diginet Padel</div>
     <nav>
         <a href="<?= h($baseNav) ?>/tournaments.php">Tournaments</a>
         <a href="<?= h($baseNav) ?>/players.php">Players</a>

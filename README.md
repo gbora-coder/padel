@@ -1,4 +1,4 @@
-# Padel Americano League
+# Diginet Padel
 
 A lightweight PHP/MySQL web app for running friendly Americano-format padel tournaments.
 
