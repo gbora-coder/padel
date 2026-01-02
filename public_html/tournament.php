@@ -9,6 +9,17 @@ if (!is_dir($incDir)) {
 require_once $incDir . '/helpers.php';
 require_once $incDir . '/game_logic.php';
 
+// Fallback guard in case helpers are not loaded on some hosts.
+if (!function_exists('games_count_for_court')) {
+    function games_count_for_court(int $courtId): int
+    {
+        $pdo = get_pdo();
+        $stmt = $pdo->prepare('SELECT COUNT(*) FROM games WHERE court_id = ?');
+        $stmt->execute([$courtId]);
+        return (int)$stmt->fetchColumn();
+    }
+}
+
 $pdo = get_pdo();
 $id = (int)($_GET['id'] ?? 0);
 $tournament = require_tournament($id);
