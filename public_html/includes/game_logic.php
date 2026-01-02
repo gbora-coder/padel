@@ -47,12 +47,14 @@ function current_game_for_court(int $courtId)
     return $stmt->fetch();
 }
 
-function games_count_for_court(int $courtId): int
-{
-    $pdo = get_pdo();
-    $stmt = $pdo->prepare('SELECT COUNT(*) FROM games WHERE court_id = ?');
-    $stmt->execute([$courtId]);
-    return (int)$stmt->fetchColumn();
+if (!function_exists('games_count_for_court')) {
+    function games_count_for_court(int $courtId): int
+    {
+        $pdo = get_pdo();
+        $stmt = $pdo->prepare('SELECT COUNT(*) FROM games WHERE court_id = ?');
+        $stmt->execute([$courtId]);
+        return (int)$stmt->fetchColumn();
+    }
 }
 
 function game_players_with_details(int $gameId): array
