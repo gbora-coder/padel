@@ -28,9 +28,10 @@ function active_games(int $tournamentId): array
 function players_assigned_with_game_number(int $tournamentId): array
 {
     $pdo = get_pdo();
-    $sql = 'SELECT gp.tournament_player_id, g.court_id, (
-                SELECT COUNT(*) FROM games g2 WHERE g2.court_id = g.court_id AND g2.id <= g.id
-            ) AS game_number
+    // Use window functions to derive a per-court game number so we can exclude
+    // only those already booked into the same-numbered game on other courts.
+    $sql = 'SELECT gp.tournament_player_id, g.court_id,
+                ROW_NUMBER() OVER (PARTITION BY g.court_id ORDER BY g.id) AS game_number
             FROM game_players gp
             JOIN games g ON g.id = gp.game_id
             WHERE g.tournament_id = ?';
