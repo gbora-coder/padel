@@ -91,12 +91,8 @@ if ($action === 'start' && $tournament['status'] === 'setup') {
     $pdo->prepare('UPDATE tournaments SET status = "active", updated_at = NOW() WHERE id = ?')->execute([$id]);
     $courts = $pdo->prepare('SELECT * FROM courts WHERE tournament_id = ?');
     $courts->execute([$id]);
-    foreach ($courts->fetchAll() as $court) {
-        $existing = current_game_for_court((int)$court['id']);
-        if (!$existing) {
-            assign_game_to_court($id, (int)$court['id']);
-        }
-    }
+    $courtRows = $courts->fetchAll();
+    assign_initial_games($id, $courtRows);
     flash('success', 'Tournament started.');
     redirect('/tournament.php?id=' . $id);
 }
