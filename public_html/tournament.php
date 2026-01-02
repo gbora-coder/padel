@@ -150,6 +150,7 @@ if ($action === 'finish_court') {
 
 // reload data
 $tournament = require_tournament($id);
+$scoreOptions = range(0, (int)$tournament['target_points']);
 $locked = is_tournament_locked($id);
 
 $playersStmt = $pdo->prepare('SELECT tp.*, p.name, p.level FROM tournament_players tp JOIN players p ON p.id = tp.player_id WHERE tp.tournament_id = ? ORDER BY p.name ASC');
@@ -274,11 +275,33 @@ include view_path('header.php');
                             <input type="hidden" name="court_id" value="<?= (int)$court['id'] ?>">
                             <div class="col">
                                 <label>Team 1 games</label>
-                                <input type="number" name="team1_score" min="0" max="<?= (int)$tournament['target_points'] ?>" required>
+                                <select
+                                    name="team1_score"
+                                    class="score-select"
+                                    id="team1-<?= (int)$game['id'] ?>"
+                                    data-pair="team2-<?= (int)$game['id'] ?>"
+                                    data-target="<?= (int)$tournament['target_points'] ?>"
+                                    required
+                                >
+                                    <?php foreach ($scoreOptions as $opt): ?>
+                                        <option value="<?= $opt ?>"><?= $opt ?></option>
+                                    <?php endforeach; ?>
+                                </select>
                             </div>
                             <div class="col">
                                 <label>Team 2 games</label>
-                                <input type="number" name="team2_score" min="0" max="<?= (int)$tournament['target_points'] ?>" required>
+                                <select
+                                    name="team2_score"
+                                    class="score-select"
+                                    id="team2-<?= (int)$game['id'] ?>"
+                                    data-pair="team1-<?= (int)$game['id'] ?>"
+                                    data-target="<?= (int)$tournament['target_points'] ?>"
+                                    required
+                                >
+                                    <?php foreach ($scoreOptions as $opt): ?>
+                                        <option value="<?= $opt ?>"><?= $opt ?></option>
+                                    <?php endforeach; ?>
+                                </select>
                             </div>
                             <div class="col" style="align-self:flex-end;">
                                 <button class="btn inline" type="submit">Save &amp; New Game</button>
@@ -377,4 +400,23 @@ include view_path('header.php');
         </tbody>
     </table>
 </div>
+<script>
+(function() {
+    const selects = document.querySelectorAll('.score-select');
+    function sync(select) {
+        const pairId = select.dataset.pair;
+        const target = parseInt(select.dataset.target, 10);
+        const pair = document.getElementById(pairId);
+        if (!pair || Number.isNaN(target)) return;
+        const value = parseInt(select.value, 10);
+        if (Number.isNaN(value)) return;
+        const other = Math.max(0, target - value);
+        pair.value = String(other);
+    }
+    selects.forEach((sel) => {
+        sync(sel);
+        sel.addEventListener('change', () => sync(sel));
+    });
+})();
+</script>
     <?php include view_path('footer.php'); ?>
